@@ -55,7 +55,7 @@ declare -A PROTO_SCHEMES
 
 # 🏆 1. KCP - FEC
 PROTO_SCHEMES["kcp-fec"]="relay+kcp"
-PROTO_ARGS["kcp-fec"]="mode=manual&resend=0&nc=1&dshard=10&pshard=5&mtu=1350&sndwnd=1024&rcvwnd=1024&keepalive=true"
+PROTO_ARGS["kcp-fec"]="mode=manual&resend=0&nc=1&dshard=10&pshard=3&mtu=1350&sndwnd=1024&rcvwnd=1024&keepalive=true"
 
 # 🏎️ 2. KCP - Classic
 PROTO_SCHEMES["kcp-classic"]="relay+kcp"
