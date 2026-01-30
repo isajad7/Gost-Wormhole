@@ -1,10 +1,40 @@
 #!/bin/bash
 
 # ==============================================================================
-# Project: TUNNEL MASTER PRO (Unified Edition)
-# Version: 9.0.0 (Unified Services + Live Logs)
-# Description: Single Process Multi-Port Tunneling with Smart Naming
+# Project: GOST WORMHOLE
+# Author: isajad01
 # ==============================================================================
+
+# --- Auto-Install the 'wormhole' command ---
+function install_shortcut() {
+    local BIN_PATH="/usr/local/bin/wormhole"
+    local REPO_URL="https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh"
+
+    # اگر فایل وجود ندارد یا کاربر با دستور curl اجرا کرده است
+    if [[ ! -f "$BIN_PATH" ]] || [[ "$0" != "$BIN_PATH" ]]; then
+        echo "Installing 'wormhole' command to system..."
+        
+        # دانلود نسخه آخر از گیت‌هاب و ذخیره در مسیر اجرایی
+        if command -v curl >/dev/null; then
+            curl -fsSL "$REPO_URL" -o "$BIN_PATH"
+        elif command -v wget >/dev/null; then
+            wget -q "$REPO_URL" -O "$BIN_PATH"
+        else
+            echo "Error: curl or wget not found."
+            return
+        fi
+
+        # دادن دسترسی اجرا
+        chmod +x "$BIN_PATH"
+        
+        echo -e "\033[0;32m[SUCCESS]\033[0m Wormhole installed! You can now type 'wormhole' to run it."
+        echo ""
+    fi
+}
+
+# فراخوانی تابع نصب در ابتدای اجرا
+install_shortcut
+
 
 # ==============================================================================
 # 1. GLOBAL CONFIGURATION
