@@ -44,8 +44,8 @@
 
 | پروتکل | توضیح |
 |------|------|
-| 🏆 KCP-FEC | بیشترین پایداری (شبکه‌های ضعیف) |
-| 🏎️ KCP-Classic | حداکثر سرعت |
+| 🏆 KCP-FEC | بیشترین پایداری (شبکه‌های ضعیف) مصرف 1.2 برابر پهانای باند|
+| 🏎️ KCP-Classic | حداکثر سرعت و مصرف 3 برابر پهنای باند به دلیل نوع پرتوکل |
 | 🚀 QUIC | مناسب استریم و ویدیو |
 | 🌐 WS (MW) | مخفی و TCP-Based |
 | 🛡️ gRPC | ضد فیلترینگ قوی |
@@ -77,7 +77,7 @@
 
 ### 1️⃣ اجرای اسکریپت
 ```bash
-bash <(curl -fsSL [https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh](https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh)) && wormhole```
+bash <(curl -fsSL [https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh](https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh)) && wormhole
 
 ```
 
@@ -95,13 +95,11 @@ bash <(curl -fsSL [https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/
 
 گزینه 1 را انتخاب کنید
 
-IP سرور خارج را وارد کنید
+وIP سرور خارج را وارد کنید
 
 پورت تانل (مثلاً 9000)
 
-پورت‌هایی که می‌خواهید فوروارد شوند:
-
-80,443,2082
+پورت‌هایی که می‌خواهید فوروارد شوند:  مثلا 80,443,2082
 
 
 انتخاب پروتکل (پیشنهادی: KCP-FEC)
@@ -171,4 +169,4 @@ Watchdog فعال می‌شود
 
 Made with ❤️ by Tunnel Master
 
-</div> </div> ```
+</div> </div> 
