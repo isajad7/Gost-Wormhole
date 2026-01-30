@@ -76,7 +76,7 @@
 
 ### 1️⃣ اجرای اسکریپت
 ```bash
-bash <(curl -fsSL [https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh](https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh)) && wormhole
+bash <(curl -fsSL https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh) && wormhole
 
 ```
 
