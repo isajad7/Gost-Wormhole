@@ -138,13 +138,56 @@ function install_dependencies() {
 }
 
 function install_gost() {
-    if [[ -f "$INSTALL_PATH" ]]; then return; fi
-    log_info "Installing GOST..."
-    wget -q --timeout=10 "$BASE_URL/gost.gz" -O /tmp/gost.gz
-    if [[ ! -s "/tmp/gost.gz" ]]; then
-        wget -q "https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz" -O /tmp/gost.gz
+    local TMP_FILE="/tmp/gost.gz"
+    local INSTALL_PATH="/usr/local/bin/gost"
+    local MIRROR_URL="$BASE_URL/gost.gz"
+    local GITHUB_URL="https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz"
+
+    # اگر قبلاً نصب شده بود
+    if [[ -x "$INSTALL_PATH" ]]; then
+        log_info "GOST already installed at $INSTALL_PATH"
+        return
     fi
-    gzip -d /tmp/gost.gz && mv /tmp/gost "$INSTALL_PATH" && chmod +x "$INSTALL_PATH"
+
+    log_info "Installing GOST binary..."
+
+    # لیست منابع دانلود به ترتیب اولویت
+    MIRRORS=("$MIRROR_URL" "$GITHUB_URL")
+
+    download_ok=false
+
+    for URL in "${MIRRORS[@]}"; do
+        log_info "Trying to download from $URL ..."
+        # timeout 10s، فقط یک بار امتحان
+        if wget --timeout=10 --tries=1 "$URL" -O "$TMP_FILE"; then
+            if [[ -s "$TMP_FILE" ]]; then
+                download_ok=true
+                log_success "Downloaded GOST successfully from $URL"
+                break
+            else
+                log_warn "Downloaded file is empty from $URL, trying next source..."
+            fi
+        else
+            log_warn "Failed to download from $URL, trying next source..."
+        fi
+    done
+
+    if [[ "$download_ok" != true ]]; then
+        log_error "Failed to download GOST from all sources. Exiting."
+        exit 1
+    fi
+
+    # استخراج فایل
+    if ! gzip -d "$TMP_FILE"; then
+        log_error "Failed to extract GOST from gzip. Exiting."
+        exit 1
+    fi
+
+    # انتقال به مسیر نصب
+    mv /tmp/gost "$INSTALL_PATH"
+    chmod +x "$INSTALL_PATH"
+
+    log_success "GOST installed successfully at $INSTALL_PATH"
 }
 
 # ==============================================================================
