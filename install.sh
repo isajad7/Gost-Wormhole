@@ -9,37 +9,28 @@
 function install_shortcut() {
     local BIN_PATH="/usr/local/bin/wormhole"
     local REPO_URL="https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh"
-    local TMP_FILE="/tmp/wormhole.$$"
 
-    # اگر قبلاً نصب شده و از خودش اجرا شده، کاری نکن
-    if [[ -x "$BIN_PATH" && "$0" == "$BIN_PATH" ]]; then
-        return
+    # اگر فایل وجود ندارد یا کاربر با دستور curl اجرا کرده است
+    if [[ ! -f "$BIN_PATH" ]] || [[ "$0" != "$BIN_PATH" ]]; then
+        echo "Installing 'wormhole' command to system..."
+        
+        # دانلود نسخه آخر از گیت‌هاب و ذخیره در مسیر اجرایی
+        if command -v curl >/dev/null; then
+            curl -fsSL "$REPO_URL" -o "$BIN_PATH"
+        elif command -v wget >/dev/null; then
+            wget -q "$REPO_URL" -O "$BIN_PATH"
+        else
+            echo "Error: curl or wget not found."
+            return
+        fi
+
+        # دادن دسترسی اجرا
+        chmod +x "$BIN_PATH"
+        
+        echo -e "\033[0;32m[SUCCESS]\033[0m Wormhole installed! You can now type 'wormhole' to run it."
+        echo ""
     fi
-
-    echo "Installing 'wormhole' command to system..."
-
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$REPO_URL" -o "$TMP_FILE" || {
-            echo "Failed to download wormhole"
-            return 1
-        }
-    elif command -v wget >/dev/null 2>&1; then
-        wget -q "$REPO_URL" -O "$TMP_FILE" || {
-            echo "Failed to download wormhole"
-            return 1
-        }
-    else
-        echo "Error: curl or wget not found."
-        return 1
-    fi
-
-    chmod +x "$TMP_FILE"
-    mv "$TMP_FILE" "$BIN_PATH"
-
-    echo -e "\033[0;32m[SUCCESS]\033[0m Wormhole installed! You can now type 'wormhole' to run it."
-    echo ""
 }
-
 
 # فراخوانی تابع نصب در ابتدای اجرا
 install_shortcut
@@ -147,49 +138,14 @@ function install_dependencies() {
 }
 
 function install_gost() {
-    if [[ -x "$INSTALL_PATH" ]]; then
-        return
-    fi
-
+    if [[ -f "$INSTALL_PATH" ]]; then return; fi
     log_info "Installing GOST..."
-
-    TMP_DIR=$(mktemp -d)
-    GZ_FILE="$TMP_DIR/gost.gz"
-
-    # دانلود از سورس اصلی
-    wget -q --timeout=10 "$BASE_URL/gost.gz" -O "$GZ_FILE"
-
-    # اگر دانلود خالی بود، از گیتهاب بگیر
-    if [[ ! -s "$GZ_FILE" ]]; then
-        wget -q "https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz" -O "$GZ_FILE"
+    wget -q --timeout=10 "$BASE_URL/gost.gz" -O /tmp/gost.gz
+    if [[ ! -s "/tmp/gost.gz" ]]; then
+        wget -q "https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz" -O /tmp/gost.gz
     fi
-
-    # اگر باز هم فایل نداریم، fail
-    if [[ ! -s "$GZ_FILE" ]]; then
-        log_error "Failed to download GOST"
-        rm -rf "$TMP_DIR"
-        return 1
-    fi
-
-    # unzip
-    gzip -d "$GZ_FILE"
-
-    # پیدا کردن فایل gost (هر اسمی که داشته باشه)
-    GOST_BIN=$(find "$TMP_DIR" -type f -perm -111 | head -n 1)
-
-    if [[ -z "$GOST_BIN" ]]; then
-        log_error "GOST binary not found after extraction"
-        rm -rf "$TMP_DIR"
-        return 1
-    fi
-
-    mv "$GOST_BIN" "$INSTALL_PATH"
-    chmod +x "$INSTALL_PATH"
-
-    rm -rf "$TMP_DIR"
-    log_info "GOST installed successfully"
+    gzip -d /tmp/gost.gz && mv /tmp/gost "$INSTALL_PATH" && chmod +x "$INSTALL_PATH"
 }
-
 
 # ==============================================================================
 # 3. WATCHDOG SYSTEM
