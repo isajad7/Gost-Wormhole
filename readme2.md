@@ -111,7 +111,7 @@ Run on both servers:
 bash <(curl -fsSL https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh)
 ```
 
-
+```
 Then:
 
 Abroad server → Setup Server
@@ -125,9 +125,12 @@ Iran server → Setup Client
 4) View Live Logs
 5) Delete Service
 0) Exit
+```
 
 🇮🇷 Client Setup (Iran)
 
+
+```
 Choose option 1
 
 Enter abroad server IP
@@ -147,8 +150,10 @@ Localhost-bound forwarded ports
 Active watchdog
 
 Live logs available
+```
 
 🌍 Server Setup (Abroad)
+```
 
 Choose option 2
 
@@ -178,9 +183,10 @@ Stop the service
 Remove systemd unit
 
 Remove watchdog cron
-
+```
 🧠 Important Notes
 
+```
 This is a tunnel, not a full VPN
 
 Bandwidth usage depends on protocol
@@ -190,8 +196,9 @@ Each tunnel = one systemd service
 Multiple tunnels are fully supported
 
 Always test with real traffic
-
+```
 ⚠️ Known Issues & Limitations
+```
 
 KCP may be unstable on some datacenters
 
@@ -201,9 +208,10 @@ UFW and iptables may conflict on some systems
 
 Restart loops indicate configuration issues
 
+```
 🏷️ Versioning
 v9.0.0
-
+```
 Improved watchdog logic
 
 Multi-port stability fixes
@@ -229,6 +237,7 @@ Fast deployment
 
 This project is provided for educational and network management purposes.
 The author is not responsible for misuse.
+```
 
 <div align="center">
 
