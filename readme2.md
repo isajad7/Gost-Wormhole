@@ -109,6 +109,7 @@ Internet / Services
 Run on both servers:
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/isajad7/Gost-Wormhole/main/install.sh)
+```
 
 
 Then:
