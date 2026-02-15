@@ -204,7 +204,8 @@ function configure_iran() {
 
     # Authentication logic based on protocol
     if [[ "$PROTO_NAME" == "wss" ]]; then
-        CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://admin:$SEC_KEY@$REMOTE_IP:$TUNNEL_PORT?$ARGS\""
+        # کلاینت اول به tls وصل میشه، بعد mw رو داخلش میفرسته
+        CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"relay+mw://127.0.0.1:4444\" -F \"tls://$REMOTE_IP:$TUNNEL_PORT?secure=false\""
     else
         CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://$REMOTE_IP:$TUNNEL_PORT?$ARGS&key=$SEC_KEY\""
     fi
@@ -249,7 +250,8 @@ function configure_kharej() {
     # Server command logic based on protocol
     if [[ "$PROTO_NAME" == "wss" ]]; then
         generate_tls_cert
-        CMD="$INSTALL_PATH -D -L \"$SCHEME://admin:$GEN_PASS@:$TUNNEL_PORT?cert=$TLS_DIR/server.crt&key=$TLS_DIR/server.key\""
+        # اینجا از زنجیره relay+mw استفاده میکنیم اما روی بستر tls
+        CMD="$INSTALL_PATH -D -L \"relay+mw://:127.0.0.1:4444\" -L \"tls://:$TUNNEL_PORT/127.0.0.1:4444?cert=$TLS_DIR/server.crt&key=$TLS_DIR/server.key\""
     else
         CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
     fi
