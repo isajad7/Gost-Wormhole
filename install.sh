@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # ==============================================================================
-# Project: GOST WORMHOLE (Phantom Edition v11.2)
-# Description: Encrypted Tunneling with Smart Downloader, Anti-DPI & WSS
+# Project: GOST WORMHOLE (Phantom Edition v11.3)
+# Description: Encrypted Tunneling with Native MWS Anti-DPI
 # ==============================================================================
 
 # --- Auto-Install Shortcut ---
@@ -69,7 +69,7 @@ function install_dependencies() {
     mkdir -p "$TLS_DIR"
 }
 
-# --- SMART DOWNLOADER (NEW) ---
+# --- SMART DOWNLOADER ---
 function install_gost() {
     if [[ -f "$INSTALL_PATH" ]]; then return; fi
     log_info "Installing GOST Core..."
@@ -144,21 +144,21 @@ function generate_secret() {
 
 function generate_tls_cert() {
     if [[ ! -f "$TLS_DIR/server.crt" ]]; then
-    log_info "Generating Stealth TLS Certificate..."
-    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
-        -subj "/C=US/ST=CA/L=Los Angeles/O=Ookla/CN=www.speedtest.net" \
-        -keyout "$TLS_DIR/server.key" \
-        -out "$TLS_DIR/server.crt" 2>/dev/null
+        log_info "Generating Stealth TLS Certificate..."
+        openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
+            -subj "/C=US/ST=CA/L=Los Angeles/O=Speedtest Inc/CN=www.speedtest.net" \
+            -keyout "$TLS_DIR/server.key" \
+            -out "$TLS_DIR/server.crt" 2>/dev/null
     fi
 }
 
 function select_protocol_scheme() {
     {
-        echo -e "${CYAN}--- Select Stealth Protocol (Encrypted) ---${NC}"
+        echo -e "${CYAN}--- Select Stealth Protocol ---${NC}"
         echo "1) KCP-Phantom (Obfuscated & Encrypted - UDP)"
         echo "2) gRPC-Gun (Best for most networks - TCP)"
         echo "3) WS-Secure (WebSocket Multiplexed - TCP)"
-        echo -e "${GREEN}4) WSS-Stealth (WebSocket + TLS Encryption - TCP)${NC} [NEW]"
+        echo -e "${GREEN}4) MWS-Stealth (Native Multiplexed WSS - TCP)${NC} [RECOMMENDED]"
     } >&2
     read -p "Select [1-4]: " P < /dev/tty
     
@@ -166,7 +166,7 @@ function select_protocol_scheme() {
         1) echo "relay+kcp|mode=fast2&crypt=chacha20-ietf-poly1305&mtu=1350&sndwnd=1024&rcvwnd=1024&dshard=10&pshard=5&keepalive=true" ;;
         2) echo "relay+grpc|keepalive=true&ping=30" ;;
         3) echo "relay+mw|keepalive=true&mbind=true" ;;
-        4) echo "relay+wss|secure=false" ;;
+        4) echo "relay+mws|keepalive=true&ping=30" ;;
         *) echo "relay+kcp|mode=fast2&crypt=chacha20-ietf-poly1305&mtu=1350&sndwnd=1024&rcvwnd=1024&dshard=10&pshard=5&keepalive=true" ;;
     esac
 }
@@ -176,11 +176,11 @@ function select_protocol_scheme() {
 # ==============================================================================
 
 function configure_iran() {
-    echo ""; log_info "--- IRAN CLIENT SETUP (Encrypted) ---"
+    echo ""; log_info "--- IRAN CLIENT SETUP ---"
     read -p "Remote Server IP (Kharej): " REMOTE_IP < /dev/tty
     if [[ -z "$REMOTE_IP" ]]; then log_error "IP required"; return; fi
-    read -p "Tunnel Port (Transport, e.g., 9000): " TUNNEL_PORT < /dev/tty
-    if [[ -z "$TUNNEL_PORT" ]]; then TUNNEL_PORT="9000"; fi
+    read -p "Tunnel Port (Transport, e.g., 8443): " TUNNEL_PORT < /dev/tty
+    if [[ -z "$TUNNEL_PORT" ]]; then TUNNEL_PORT="8443"; fi
     echo -e "${YELLOW}IMPORTANT: Enter the SAME password used on Kharej server!${NC}"
     read -p "Tunnel Password (Secret): " SEC_KEY < /dev/tty
     if [[ -z "$SEC_KEY" ]]; then log_error "Password cannot be empty!"; return; fi
@@ -202,10 +202,9 @@ function configure_iran() {
         fi
     done
 
-    # Authentication logic based on protocol
-    if [[ "$PROTO_NAME" == "wss" ]]; then
-
-        CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"relay+mw://127.0.0.1:4444\" -F \"tls://$REMOTE_IP:$TUNNEL_PORT?secure=false\""
+    # MWS requires auth via URL instead of just the 'key' param, and secure=false to skip cert verify
+    if [[ "$PROTO_NAME" == "mws" ]]; then
+        CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://admin:$SEC_KEY@$REMOTE_IP:$TUNNEL_PORT?$ARGS&secure=false\""
     else
         CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://$REMOTE_IP:$TUNNEL_PORT?$ARGS&key=$SEC_KEY\""
     fi
@@ -229,8 +228,8 @@ EOF
 }
 
 function configure_kharej() {
-    echo ""; log_info "--- KHAREJ SERVER SETUP (Encrypted) ---"
-    read -p "Tunnel Port to Listen on (e.g., 9000): " TUNNEL_PORT < /dev/tty
+    echo ""; log_info "--- KHAREJ SERVER SETUP ---"
+    read -p "Tunnel Port to Listen on (e.g., 8443): " TUNNEL_PORT < /dev/tty
     if [[ -z "$TUNNEL_PORT" ]]; then log_error "Port required"; return; fi
     local GEN_PASS=$(generate_secret)
     echo -e "${YELLOW}--- SECRET PASSWORD GENERATED ---${NC}"
@@ -247,11 +246,10 @@ function configure_kharej() {
     
     open_firewall_ports "$TUNNEL_PORT"
     
-    # Server command logic based on protocol
-    if [[ "$PROTO_NAME" == "wss" ]]; then
+    # MWS requires certs and auth via URL
+    if [[ "$PROTO_NAME" == "mws" ]]; then
         generate_tls_cert
-        
-        CMD="$INSTALL_PATH -D -L \"relay+mw://127.0.0.1:4444\" -L \"tls://:$TUNNEL_PORT/127.0.0.1:4444?cert=$TLS_DIR/server.crt&key=$TLS_DIR/server.key\""
+        CMD="$INSTALL_PATH -D -L \"$SCHEME://admin:$GEN_PASS@:$TUNNEL_PORT?$ARGS&cert=$TLS_DIR/server.crt&key=$TLS_DIR/server.key\""
     else
         CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
     fi
@@ -322,7 +320,7 @@ setup_watchdog_script
 while true; do
     clear
     echo -e "${CYAN}==============================================${NC}"
-    echo -e "${CYAN}   GOST WORMHOLE v11.2 (TLS Stealth)          ${NC}"
+    echo -e "${CYAN}   GOST WORMHOLE v11.3 (Native MWS)           ${NC}"
     echo -e "${CYAN}==============================================${NC}"
     echo "1. Setup IRAN (Client)"
     echo "2. Setup KHAREJ (Server)"
