@@ -225,15 +225,16 @@ function configure_kharej() {
     
     local PROTO_DATA=$(select_protocol_scheme)
     local SCHEME=$(echo "$PROTO_DATA" | cut -d'|' -f1)
+    local ARGS=$(echo "$PROTO_DATA" | cut -d'|' -f2)
     local PROTO_NAME=${SCHEME#*+}
     SERVICE_NAME="gost-server-${PROTO_NAME}-${TUNNEL_PORT}"
     
     open_firewall_ports "$TUNNEL_PORT"
     
     if [[ "$PROTO_NAME" == "kcp" ]]; then
-         CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?crypt=chacha20-ietf-poly1305&key=$GEN_PASS\""
+     CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
     else
-         CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?key=$GEN_PASS\""
+     CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
     fi
     
     cat > "${SYSTEMD_DIR}/${SERVICE_NAME}.service" <<EOF
