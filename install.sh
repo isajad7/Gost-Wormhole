@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # ==============================================================================
-# Project: GOST WORMHOLE (Phantom Edition v11.1)
-# Description: Encrypted Tunneling with Smart Downloader & Anti-DPI
+# Project: GOST WORMHOLE (Phantom Edition v11.2)
+# Description: Encrypted Tunneling with Smart Downloader, Anti-DPI & WSS
 # ==============================================================================
 
 # --- Auto-Install Shortcut ---
@@ -23,6 +23,7 @@ INSTALL_PATH="/usr/local/bin/gost"
 WATCHDOG_PATH="/usr/local/bin/gost_watchdog"
 SYSTEMD_DIR="/etc/systemd/system"
 LOG_DIR="/var/log/gost"
+TLS_DIR="/etc/gost/tls"
 
 # Sources
 GITHUB_URL="https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz"
@@ -65,6 +66,7 @@ function install_dependencies() {
     for d in "${deps[@]}"; do if ! command -v $d >/dev/null; then missing+=($d); fi; done
     if [ ${#missing[@]} -gt 0 ]; then apt-get update -q && apt-get install -y "${missing[@]}" -q; fi
     mkdir -p "$LOG_DIR"
+    mkdir -p "$TLS_DIR"
 }
 
 # --- SMART DOWNLOADER (NEW) ---
@@ -76,17 +78,13 @@ function install_gost() {
     local ATTEMPT=1
     
     while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-        # Dynamic Timeout: Starts at 5s, increases by 5s each loop (5, 10, 15, 20...)
         local TIMEOUT=$((ATTEMPT * 5))
-        
         log_info "Attempt $ATTEMPT/$MAX_ATTEMPTS (Timeout: ${TIMEOUT}s)..."
 
-        # 1. Try GitHub (Best for Kharej)
         if wget -q --timeout="$TIMEOUT" --tries=1 "$GITHUB_URL" -O /tmp/gost.gz; then
             if [[ -s "/tmp/gost.gz" ]]; then break; fi
         fi
 
-        # 2. Try Mirror (Best for Iran)
         if wget -q --timeout="$TIMEOUT" --tries=1 "$MIRROR_URL" -O /tmp/gost.gz; then
             if [[ -s "/tmp/gost.gz" ]]; then break; fi
         fi
@@ -144,19 +142,31 @@ function generate_secret() {
     openssl rand -hex 8
 }
 
+function generate_tls_cert() {
+    if [[ ! -f "$TLS_DIR/server.crt" ]]; then
+    log_info "Generating Stealth TLS Certificate..."
+    openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
+        -subj "/C=US/ST=CA/L=Los Angeles/O=Ookla/CN=www.speedtest.net" \
+        -keyout "$TLS_DIR/server.key" \
+        -out "$TLS_DIR/server.crt" 2>/dev/null
+    fi
+}
+
 function select_protocol_scheme() {
     {
         echo -e "${CYAN}--- Select Stealth Protocol (Encrypted) ---${NC}"
-        echo "1) KCP-Phantom (Obfuscated & Encrypted)"
-        echo "2) gRPC-Gun (Best for most networks)"
-        echo "3) WS-Secure (WebSocket + Encryption)"
+        echo "1) KCP-Phantom (Obfuscated & Encrypted - UDP)"
+        echo "2) gRPC-Gun (Best for most networks - TCP)"
+        echo "3) WS-Secure (WebSocket Multiplexed - TCP)"
+        echo -e "${GREEN}4) WSS-Stealth (WebSocket + TLS Encryption - TCP)${NC} [NEW]"
     } >&2
-    read -p "Select [1-3]: " P < /dev/tty
+    read -p "Select [1-4]: " P < /dev/tty
     
     case $P in
         1) echo "relay+kcp|mode=fast2&crypt=chacha20-ietf-poly1305&mtu=1350&sndwnd=1024&rcvwnd=1024&dshard=10&pshard=5&keepalive=true" ;;
         2) echo "relay+grpc|keepalive=true&ping=30" ;;
         3) echo "relay+mw|keepalive=true&mbind=true" ;;
+        4) echo "relay+wss|secure=false" ;;
         *) echo "relay+kcp|mode=fast2&crypt=chacha20-ietf-poly1305&mtu=1350&sndwnd=1024&rcvwnd=1024&dshard=10&pshard=5&keepalive=true" ;;
     esac
 }
@@ -174,7 +184,7 @@ function configure_iran() {
     echo -e "${YELLOW}IMPORTANT: Enter the SAME password used on Kharej server!${NC}"
     read -p "Tunnel Password (Secret): " SEC_KEY < /dev/tty
     if [[ -z "$SEC_KEY" ]]; then log_error "Password cannot be empty!"; return; fi
-    read -p "Ports to Forward (e.g., 443,2082): " FWD_PORTS < /dev/tty
+    read -p "Ports to Forward (e.g., 443,13867): " FWD_PORTS < /dev/tty
     
     local PROTO_DATA=$(select_protocol_scheme)
     local SCHEME=$(echo "$PROTO_DATA" | cut -d'|' -f1)
@@ -192,7 +202,12 @@ function configure_iran() {
         fi
     done
 
-    CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://$REMOTE_IP:$TUNNEL_PORT?$ARGS&key=$SEC_KEY\""
+    # Authentication logic based on protocol
+    if [[ "$PROTO_NAME" == "wss" ]]; then
+        CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://admin:$SEC_KEY@$REMOTE_IP:$TUNNEL_PORT?$ARGS\""
+    else
+        CMD="$INSTALL_PATH -D $LISTEN_ARGS -F \"$SCHEME://$REMOTE_IP:$TUNNEL_PORT?$ARGS&key=$SEC_KEY\""
+    fi
     
     cat > "${SYSTEMD_DIR}/${SERVICE_NAME}.service" <<EOF
 [Unit]
@@ -231,10 +246,12 @@ function configure_kharej() {
     
     open_firewall_ports "$TUNNEL_PORT"
     
-    if [[ "$PROTO_NAME" == "kcp" ]]; then
-     CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
+    # Server command logic based on protocol
+    if [[ "$PROTO_NAME" == "wss" ]]; then
+        generate_tls_cert
+        CMD="$INSTALL_PATH -D -L \"$SCHEME://admin:$GEN_PASS@:$TUNNEL_PORT?cert=$TLS_DIR/server.crt&key=$TLS_DIR/server.key\""
     else
-     CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
+        CMD="$INSTALL_PATH -D -L \"$SCHEME://:$TUNNEL_PORT?$ARGS&key=$GEN_PASS\""
     fi
     
     cat > "${SYSTEMD_DIR}/${SERVICE_NAME}.service" <<EOF
@@ -303,7 +320,7 @@ setup_watchdog_script
 while true; do
     clear
     echo -e "${CYAN}==============================================${NC}"
-    echo -e "${CYAN}   GOST WORMHOLE v11.1 (Smart Download)       ${NC}"
+    echo -e "${CYAN}   GOST WORMHOLE v11.2 (TLS Stealth)          ${NC}"
     echo -e "${CYAN}==============================================${NC}"
     echo "1. Setup IRAN (Client)"
     echo "2. Setup KHAREJ (Server)"
